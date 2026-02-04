@@ -29,8 +29,23 @@ fn pooling[
     ].stack_allocation()
 
     global_i = block_dim.x * block_idx.x + thread_idx.x
-    local_i = thread_idx.x
-    # FIX ME IN (roughly 10 lines)
+    local_i = thread_idx.x # local_i is strictly less then or equal to global_i
+
+    # Init fast shared memory 
+    if global_i < size:
+        shared[local_i] = a[global_i]
+
+    # Ensure all shared memory is loaded before we start processing
+    barrier()
+
+    if global_i < size:
+        # Handle special cases (not full sized pool)
+        if global_i == 0:
+            output[0] = shared[0]
+        elif global_i == 1:
+            output[1] = shared[0] + shared[1]
+        elif global_i > 1:
+            output[global_i] = shared[local_i-2] + shared[local_i-1] + shared[local_i]
 
 
 # ANCHOR_END: pooling_layout_tensor

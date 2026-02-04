@@ -24,21 +24,22 @@ fn pooling(
         address_space = AddressSpace.SHARED,
     ]()
     global_i = block_dim.x * block_idx.x + thread_idx.x
-    local_i = thread_idx.x
+    local_i = thread_idx.x # local_i is strictly less then or equal to global_i
 
     # Init fast shared memory 
-    if global_i < size and local_i < size:
+    if global_i < size:
         shared[local_i] = a[global_i]
 
+    # Ensure all shared memory is loaded before we start processing
     barrier()
 
-    # Dumbest solution
-    if global_i < size and local_i < size:
+    if global_i < size:
+        # Handle special cases (not full sized pool)
         if global_i == 0:
             output[0] = shared[0]
         elif global_i == 1:
             output[1] = shared[0] + shared[1]
-        else:
+        elif global_i > 1:
             output[global_i] = shared[local_i-2] + shared[local_i-1] + shared[local_i]
 
 # ANCHOR_END: pooling
