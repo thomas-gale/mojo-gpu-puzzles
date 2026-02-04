@@ -35,7 +35,7 @@ fn dot_product(
     barrier()
 
     # Parallel reduction in shared memory (Log2(n) steps of loop)
-    stride = TPB // 2
+    stride = UInt(TPB // 2)
     while stride > 0:
         if local_i < stride:
             shared[local_i] += shared[local_i + stride]
