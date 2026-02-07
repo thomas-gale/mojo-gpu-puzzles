@@ -24,8 +24,28 @@ fn prefix_sum_simple[
 ):
     global_i = block_dim.x * block_idx.x + thread_idx.x
     local_i = thread_idx.x
-    # FILL ME IN (roughly 18 lines)
 
+    shared_a = LayoutTensor[
+        dtype,
+        Layout.row_major(SIZE),
+        MutAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+
+    if global_i < size:
+      shared_a[global_i] = a[global_i]
+
+    barrier()
+
+    var stride = UInt(1)
+    while stride < size:
+        if global_i >= stride and global_i < size:
+            shared_a[global_i] += shared_a[global_i - stride]
+        barrier()
+        stride *= 2
+
+    if global_i < size:
+       output[global_i] = shared_a[global_i]
 
 # ANCHOR_END: prefix_sum_simple
 
@@ -46,8 +66,8 @@ fn prefix_sum_local_phase[
     a: LayoutTensor[dtype, in_layout, ImmutAnyOrigin],
     size: UInt,
 ):
-    global_i = block_dim.x * block_idx.x + thread_idx.x
-    local_i = thread_idx.x
+    _global_i = block_dim.x * block_idx.x + thread_idx.x
+    _local_i = thread_idx.x
     # FILL ME IN (roughly 20 lines)
 
 
@@ -55,7 +75,7 @@ fn prefix_sum_local_phase[
 fn prefix_sum_block_sum_phase[
     layout: Layout
 ](output: LayoutTensor[dtype, layout, MutAnyOrigin], size: UInt):
-    global_i = block_dim.x * block_idx.x + thread_idx.x
+    _global_i = block_dim.x * block_idx.x + thread_idx.x
     # FILL ME IN (roughly 3 lines)
 
 
