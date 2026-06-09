@@ -39,8 +39,8 @@ def add_10_shared(
 
     barrier()
 
-    # FILL ME IN (roughly 2 lines)
-
+    if global_i < size:
+      output[global_i] = shared[local_i] + 10
 
 # ANCHOR_END: add_10_shared
 
