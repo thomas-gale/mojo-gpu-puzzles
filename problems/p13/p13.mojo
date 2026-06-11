@@ -43,17 +43,18 @@ def conv_1d_simple(
         dtype=dtype, address_space=AddressSpace.SHARED
     ](row_major[CONV]())
 
-    if local_i < SIZE: 
-      shared_a[local_i] = a[local_i]
-      if local_i <= CONV:
-        shared_b[local_i] = b[local_i]
-      barrier()
+    if local_i < SIZE:
+        shared_a[local_i] = a[local_i]
+        if local_i <= CONV:
+            shared_b[local_i] = b[local_i]
+        barrier()
 
-      var sum: Scalar[DType.float32] = 0.0
-      for j in range(CONV):
-        if local_i + j < SIZE:
-          sum += shared_a[local_i + j] * shared_b[j]
-      output[local_i] = sum
+        var sum: Scalar[DType.float32] = 0.0
+        for j in range(CONV):
+            if local_i + j < SIZE:
+                sum += shared_a[local_i + j] * shared_b[j]
+        output[local_i] = sum
+
 
 # ANCHOR_END: conv_1d_simple
 
@@ -75,10 +76,34 @@ def conv_1d_block_boundary(
     a: TileTensor[mut=False, dtype, In2Layout, ImmutAnyOrigin],
     b: TileTensor[mut=False, dtype, Conv2Layout, ImmutAnyOrigin],
 ):
-    ...
-    # var global_i = block_dim.x * block_idx.x + thread_idx.x
-    # var local_i = thread_idx.x
-    # FILL ME IN (roughly 18 lines)
+    var global_i = block_dim.x * block_idx.x + thread_idx.x
+    var local_i = thread_idx.x
+
+    var shared_a = stack_allocation[
+        dtype=dtype, address_space=AddressSpace.SHARED
+    ](row_major[TPB + CONV_2]())
+
+    var shared_b = stack_allocation[
+        dtype=dtype, address_space=AddressSpace.SHARED
+    ](row_major[CONV_2]())
+
+    if global_i < SIZE_2:
+        # Fill shared input for all local_i
+        shared_a[local_i] = a[global_i]
+        # Fill over local_i within CONV_2
+        if local_i < CONV_2:
+            shared_b[local_i] = b[local_i]  # Fill shared conv
+            # Fill extra conv border on shared input (for blocks that aren't the last)
+            if block_idx.x < block_dim.x:
+                shared_a[local_i + TPB] = a[global_i + TPB]
+
+        barrier()
+
+        var sum: Scalar[DType.float32] = 0.0
+        for j in range(CONV_2):
+            if local_i + j < TPB + CONV_2:
+                sum += shared_a[local_i + j] * shared_b[j]
+        output[global_i] = sum
 
 
 # ANCHOR_END: conv_1d_block_boundary
