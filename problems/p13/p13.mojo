@@ -32,10 +32,28 @@ def conv_1d_simple(
     a: TileTensor[mut=False, dtype, InLayout, ImmutAnyOrigin],
     b: TileTensor[mut=False, dtype, ConvLayout, ImmutAnyOrigin],
 ):
-    var global_i = block_dim.x * block_idx.x + thread_idx.x
     var local_i = thread_idx.x
-    # FILL ME IN (roughly 14 lines)
 
+    # Note: all theads in a thread block see the same allocations
+    var shared_a = stack_allocation[
+        dtype=dtype, address_space=AddressSpace.SHARED
+    ](row_major[SIZE]())
+
+    var shared_b = stack_allocation[
+        dtype=dtype, address_space=AddressSpace.SHARED
+    ](row_major[CONV]())
+
+    if local_i < SIZE: 
+      shared_a[local_i] = a[local_i]
+      if local_i <= CONV:
+        shared_b[local_i] = b[local_i]
+      barrier()
+
+      var sum: Scalar[DType.float32] = 0.0
+      for j in range(CONV):
+        if local_i + j < SIZE:
+          sum += shared_a[local_i + j] * shared_b[j]
+      output[local_i] = sum
 
 # ANCHOR_END: conv_1d_simple
 
@@ -57,8 +75,9 @@ def conv_1d_block_boundary(
     a: TileTensor[mut=False, dtype, In2Layout, ImmutAnyOrigin],
     b: TileTensor[mut=False, dtype, Conv2Layout, ImmutAnyOrigin],
 ):
-    var global_i = block_dim.x * block_idx.x + thread_idx.x
-    var local_i = thread_idx.x
+    ...
+    # var global_i = block_dim.x * block_idx.x + thread_idx.x
+    # var local_i = thread_idx.x
     # FILL ME IN (roughly 18 lines)
 
 
