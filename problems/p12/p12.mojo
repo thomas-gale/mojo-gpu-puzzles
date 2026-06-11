@@ -31,9 +31,23 @@ def dot_product(
     b: TileTensor[mut=False, dtype, LayoutType, ImmutAnyOrigin],
     size: Int,
 ):
-    # FILL ME IN (roughly 13 lines)
-    ...
+    var global_i = block_dim.x * block_idx.x + thread_idx.x
+    var local_i = thread_idx.x
 
+    var shared = stack_allocation[
+        dtype=dtype, address_space=AddressSpace.SHARED
+    ](row_major[TPB]())
+
+    if global_i < size:
+      shared[local_i] = a[global_i] * b[global_i]
+      barrier()
+      var i = 1
+      while i < size:
+        shared[local_i] += shared[local_i + i]
+        barrier()
+        i *= 2
+      if global_i == 0:
+        output[0] = shared[0]
 
 # ANCHOR_END: dot_product
 
