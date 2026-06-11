@@ -28,9 +28,22 @@ def prefix_sum_simple(
     a: TileTensor[mut=False, dtype, LayoutType, ImmutAnyOrigin],
     size: Int,
 ):
-    var global_i = block_dim.x * block_idx.x + thread_idx.x
     var local_i = thread_idx.x
-    # FILL ME IN (roughly 18 lines)
+
+    var shared_a = stack_allocation[
+        dtype=dtype, address_space=AddressSpace.SHARED
+    ](row_major[SIZE]())
+
+    if local_i < SIZE:
+        shared_a[local_i] = a[local_i]
+        barrier()
+        var stride = 1
+        while stride <= SIZE / 2:
+            if local_i + stride < SIZE:
+                shared_a[local_i + stride] += shared_a[local_i]
+            barrier()
+            stride *= 2
+        output[local_i] = shared_a[local_i]
 
 
 # ANCHOR_END: prefix_sum_simple
@@ -52,8 +65,9 @@ def prefix_sum_local_phase(
     a: TileTensor[mut=False, dtype, Layout2Type, ImmutAnyOrigin],
     size: Int,
 ):
-    var global_i = block_dim.x * block_idx.x + thread_idx.x
-    var local_i = thread_idx.x
+    ...
+    # var global_i = block_dim.x * block_idx.x + thread_idx.x
+    # var local_i = thread_idx.x
     # FILL ME IN (roughly 20 lines)
 
 
@@ -62,7 +76,8 @@ def prefix_sum_block_sum_phase(
     output: TileTensor[mut=True, dtype, ExtendedLayoutType, MutAnyOrigin],
     size: Int,
 ):
-    var global_i = block_dim.x * block_idx.x + thread_idx.x
+    ...
+    # var global_i = block_dim.x * block_idx.x + thread_idx.x
     # FILL ME IN (roughly 3 lines)
 
 
